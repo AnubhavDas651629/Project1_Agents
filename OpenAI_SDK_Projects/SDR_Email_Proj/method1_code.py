@@ -27,7 +27,7 @@ async def run_method1():
             Runner.run(sales_agent2, message),
             Runner.run(sales_agent3, message),
         )
-    outputs = [results.final_output for result in results]
+    outputs = [result.final_output for result in results]
 
     for i, output in enumerate(outputs):
         print(f"\n--- Draft #{i} ---")
