@@ -1,11 +1,11 @@
 import asyncio
+import os
 import json
 from datetime import datetime
 from dotenv import load_dotenv
+from openai import AsyncOpenAI
 from openai.types.responses import ResponseTextDeltaEvent
-from agents import Agent, Runner, trace, function_tool, SQLiteSession
-
-from Lab1 import question
+from agents import Agent, Runner, trace, function_tool, SQLiteSession, OpenAIChatCompletionsModel
 
 load_dotenv(override=True)
 
@@ -18,24 +18,41 @@ def add_flashcard(question: str, answer: str) -> str:
     return f"Flashcard #{len(flashcard)} saved!, You now have {len(flashcard)}"
 
 @function_tool
-def list_flashcard() -> str:
-    """List all flashcards that the student has created so far"""
+def list_flashcard(topic: str = "") -> str:
+    """List all flashcards that the student has created so far. Can optionally filter by topic."""
     if not flashcard:
         return "No flashcards yet. Ask me to create some"
     lines = []
     for i, card in enumerate(flashcard,1):
+        if topic and topic.lower() not in card['question'].lower() and topic.lower() not in card['answer'].lower():
+            continue
         lines.append(f"  #{i} Q: {card['question']}")
         lines.append(f"       A: {card['answer']}")
+    if not lines:
+        return f"No flashcards found matching '{topic}'."
     return "Your flashcard:\n" + "\n".join(lines)
 
 @function_tool
-def quiz_me() -> str:
-    """Pick a random flashcard and quiz the student (show only the question)."""
+def quiz_me(topic: str = "") -> str:
+    """Pick a random flashcard and quiz the student (show only the question). Can optionally filter by topic."""
     if not flashcard:
         return "You have no flashcard - ask me to create some"
     import random
-    card = random.choice(flashcard)
+    matching = [c for c in flashcard if not topic or topic.lower() in c['question'].lower() or topic.lower() in c['answer'].lower()]
+    if not matching:
+        matching = flashcard
+    card = random.choice(matching)
     return f"QUIZ TIME!\n\nQuestion: {card['question']}\n\n(Think about your answer, then tell me and I will check it.)\n\n[correct answer hidden: {card['answer']}]"
+
+groq_client = AsyncOpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key= os.getenv("GROQ_API_KEY")
+)
+
+groq_model = OpenAIChatCompletionsModel(
+    model="openai/gpt-oss-120b",
+    openai_client=groq_client
+)
 
 
 study_buddy = Agent(
@@ -55,7 +72,7 @@ study_buddy = Agent(
     Keep your explanations concise but clear. Use analogies where helpful.
     Always be positive and encouraging!""",
 
-    model = "openai/gpt-oss-120b",
+    model = groq_model,
     tools = [add_flashcard, list_flashcard, quiz_me]
     )
 
