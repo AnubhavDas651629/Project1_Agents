@@ -5,11 +5,21 @@ from email.message import EmailMessage
 
 import requests
 from dotenv import load_dotenv
-from agents import Agent, Runner, trace, function_tool, ModelSettings
+from openai import AsyncOpenAI
+from agents import Agent, Runner, trace, function_tool, ModelSettings, OpenAIChatCompletionsModel
 
 load_dotenv(override=True)
 
-MODEL_NAME = "openai/gpt-oss-120b"
+groq_client = AsyncOpenAI(
+    base_url="https://api.groq.com/openai/v1",
+    api_key=os.getenv("GROQ_API_KEY")
+)
+
+
+MODEL_NAME = OpenAIChatCompletionsModel(
+    model="openai/gpt-oss-120b",
+    openai_client=groq_client
+)
 
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_SMTP_SERVER = os.getenv("EMAIL_SMTP_SERVER")
@@ -20,6 +30,10 @@ PUSHOVER_USER = os.getenv("PUSHOVER_USER")
 PUSHOVER_TOKEN = os.getenv("PUSHOVER_TOKEN")
 PUSHOVER_URL = "https://api.pushover.net/1/messages.json"
 USE_PUSH = bool(PUSHOVER_USER and PUSHOVER_TOKEN)
+
+PUSHOVER_USER
+PUSHOVER_TOKEN
+
 
 def send_email(subject: str, text_body: str, html_body: str):
     """Send an email via SMTP"""
@@ -140,7 +154,7 @@ async def main():
         from method1_code import run_method1
         await run_method1()
     elif choice == "2":
-        from method2_tools import run_method2
+        from method2_code import run_method2
         await run_method2()
     else:
         print("Invalid choice. Please run again and enter 1 or 2.")
